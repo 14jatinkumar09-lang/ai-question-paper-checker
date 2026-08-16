@@ -1,0 +1,6 @@
+{
+  "name": "AI Answer Sheet Checker",
+  "description": "Automated AI evaluation of student answer sheets against question papers and answer keys with question-level breakdown, editable marks, and comprehensive performance reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
