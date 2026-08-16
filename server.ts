@@ -70,12 +70,29 @@ async function startServer() {
       }
 
       const ai = getGenAI();
+      
+      const normalizeMime = (mime?: string, filename?: string) => {
+        let m = (mime || "").toLowerCase().trim();
+        if (m === "image/jpg" || m === "image/pjpeg") return "image/jpeg";
+        if (filename) {
+          const ext = filename.split(".").pop()?.toLowerCase();
+          if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+          if (ext === "png") return "image/png";
+          if (ext === "webp") return "image/webp";
+          if (ext === "pdf") return "application/pdf";
+        }
+        if (!m || m === "application/octet-stream") {
+          return "application/pdf";
+        }
+        return m;
+      };
+
       if (!ai) {
-        // If API key is not yet set in environment, return a helpful structured fallback
+        // If API key is not yet set in environment, return a structured fallback response
         res.status(200).json({
           success: true,
           isSimulated: true,
-          message: "Evaluated using standard evaluation engine (GEMINI_API_KEY not configured)",
+          message: "Evaluated using standard evaluation engine (GEMINI_API_KEY not configured in environment)",
         });
         return;
       }
@@ -87,9 +104,9 @@ async function startServer() {
         return parts.length > 1 ? parts[1] : parts[0];
       };
 
-      const qpMime = questionPaper.mimeType || "application/pdf";
-      const asMime = answerSheet.mimeType || "application/pdf";
-      const akMime = answerKey.mimeType || "application/pdf";
+      const qpMime = normalizeMime(questionPaper.mimeType, questionPaper.name);
+      const asMime = normalizeMime(answerSheet.mimeType, answerSheet.name);
+      const akMime = normalizeMime(answerKey.mimeType, answerKey.name);
 
       const qpPart = {
         inlineData: {
@@ -304,12 +321,22 @@ Extract every question systematically and generate the complete assessment.`;
         },
       });
 
-      const rawJson = response.text?.trim();
+      let rawJson = (response.text || "").trim();
       if (!rawJson) {
         throw new Error("Empty response from AI model.");
       }
 
-      const parsedData = JSON.parse(rawJson);
+      if (rawJson.startsWith("```")) {
+        rawJson = rawJson.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?\s*```$/, "").trim();
+      }
+
+      let parsedData: any;
+      try {
+        parsedData = JSON.parse(rawJson);
+      } catch (parseErr) {
+        console.error("Failed to parse AI response JSON:", rawJson.slice(0, 300));
+        throw new Error("AI returned malformed assessment data. Please retry evaluation.");
+      }
 
       // Enhance with calculated IDs and final fields
       const formattedQuestions = (parsedData.questions || []).map(
