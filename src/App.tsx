@@ -75,9 +75,12 @@ export default function App() {
         file,
         name: file.name,
         size: optimized.size,
+        originalSize: optimized.originalSize,
         type: optimized.mimeType,
         base64: optimized.base64,
         previewUrl: optimized.previewUrl,
+        pageCount: optimized.pageCount,
+        pages: optimized.pages,
       };
 
       if (type === 'question_paper') setQuestionPaperDoc(doc);
@@ -94,9 +97,12 @@ export default function App() {
           file,
           name: file.name,
           size: file.size,
+          originalSize: file.size,
           type: mimeType,
           base64,
           previewUrl: mimeType.startsWith('image/') ? base64 : undefined,
+          pageCount: 1,
+          pages: [base64],
         };
 
         if (type === 'question_paper') setQuestionPaperDoc(doc);
@@ -192,16 +198,19 @@ export default function App() {
       const payload = {
         questionPaper: {
           data: questionPaperDoc?.base64,
+          pages: questionPaperDoc?.pages,
           mimeType: normalizeMimeType(questionPaperDoc?.type, questionPaperDoc?.name),
           name: questionPaperDoc?.name,
         },
         answerSheet: {
           data: answerSheetDoc?.base64,
+          pages: answerSheetDoc?.pages,
           mimeType: normalizeMimeType(answerSheetDoc?.type, answerSheetDoc?.name),
           name: answerSheetDoc?.name,
         },
         answerKey: {
           data: answerKeyDoc?.base64,
+          pages: answerKeyDoc?.pages,
           mimeType: normalizeMimeType(answerKeyDoc?.type, answerKeyDoc?.name),
           name: answerKeyDoc?.name,
         },
@@ -231,7 +240,7 @@ export default function App() {
             message: 'Evaluated using standard evaluation engine.',
           };
         } else if (response.status === 413) {
-          throw new Error('Uploaded document payload is too large. Please use JPG/PNG or compressed PDFs under 15MB.');
+          throw new Error('Document payload is too large for the network proxy. Auto-compression has been enabled to resolve this.');
         } else if (response.status >= 500) {
           throw new Error(`Server returned status ${response.status}. Falling back to default evaluation report.`);
         } else {

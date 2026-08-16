@@ -4,10 +4,12 @@ export interface UploadedDoc {
   file: File | null;
   name: string;
   size: number;
+  originalSize?: number;
   type: string;
   base64?: string;
   previewUrl?: string;
   pageCount?: number;
+  pages?: string[];
 }
 
 export type QuestionStatus = 'correct' | 'incorrect' | 'partial' | 'unanswered' | 'review_needed';

@@ -59,8 +59,8 @@ export const FileUploadCard: React.FC<FileUploadCardProps> = ({
       return;
     }
 
-    if (file.size > 40 * 1024 * 1024) {
-      setErrorMsg('File exceeds 40MB limit. Please upload a smaller file.');
+    if (file.size > 50 * 1024 * 1024) {
+      setErrorMsg('File exceeds 50MB limit. Please upload a smaller file.');
       return;
     }
 
@@ -146,8 +146,11 @@ export const FileUploadCard: React.FC<FileUploadCardProps> = ({
             Click to upload or drag & drop
           </p>
           <p className="text-xs text-slate-500">
-            PDF, JPG, JPEG, or PNG (up to 40MB)
+            PDF, JPG, JPEG, or PNG (up to 50MB)
           </p>
+          <span className="mt-1 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+            Auto-optimized for ultra-fast checking
+          </span>
         </div>
       ) : (
         <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
@@ -164,9 +167,21 @@ export const FileUploadCard: React.FC<FileUploadCardProps> = ({
                 <p className="text-sm font-semibold text-slate-900 truncate" title={document.name}>
                   {document.name}
                 </p>
-                <p className="text-xs text-slate-500">
-                  {formatFileSize(document.size)} • {document.type.split('/')[1]?.toUpperCase() || 'DOCUMENT'}
-                </p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <span className="text-xs text-slate-500 font-medium">
+                    {formatFileSize(document.size)}
+                  </span>
+                  {document.originalSize && document.originalSize > document.size && (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-sm">
+                      {Math.round((1 - document.size / document.originalSize) * 100)}% compressed
+                    </span>
+                  )}
+                  {document.pageCount && document.pageCount > 1 && (
+                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-100 px-1.5 py-0.2 rounded-sm">
+                      {document.pageCount} pages
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

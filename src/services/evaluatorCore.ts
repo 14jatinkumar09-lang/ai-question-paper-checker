@@ -1,10 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { EvaluationReport } from "../types";
 
+export interface DocumentInput {
+  data?: string;
+  pages?: string[];
+  mimeType?: string;
+  name?: string;
+}
+
 export interface EvaluateRequestPayload {
-  questionPaper: { data: string; mimeType: string; name?: string };
-  answerSheet: { data: string; mimeType: string; name?: string };
-  answerKey: { data: string; mimeType: string; name?: string };
+  questionPaper: DocumentInput;
+  answerSheet: DocumentInput;
+  answerKey: DocumentInput;
   isDemo?: boolean;
   customSubject?: string;
   customTestName?: string;
@@ -67,7 +74,11 @@ export async function processEvaluation(
     };
   }
 
-  if (!questionPaper?.data || !answerSheet?.data || !answerKey?.data) {
+  const hasQP = Boolean(questionPaper?.data || (questionPaper?.pages && questionPaper.pages.length > 0));
+  const hasAS = Boolean(answerSheet?.data || (answerSheet?.pages && answerSheet.pages.length > 0));
+  const hasAK = Boolean(answerKey?.data || (answerKey?.pages && answerKey.pages.length > 0));
+
+  if (!hasQP || !hasAS || !hasAK) {
     throw new Error("All three files (Question Paper, Answer Sheet, Answer Key) are required.");
   }
 
@@ -81,30 +92,34 @@ export async function processEvaluation(
     };
   }
 
-  const qpMime = normalizeMime(questionPaper.mimeType, questionPaper.name);
-  const asMime = normalizeMime(answerSheet.mimeType, answerSheet.name);
-  const akMime = normalizeMime(answerKey.mimeType, answerKey.name);
+  function buildDocParts(doc: DocumentInput, defaultLabel: string): any[] {
+    const parts: any[] = [];
+    if (doc.pages && doc.pages.length > 0) {
+      doc.pages.forEach((pageData, index) => {
+        parts.push({ text: `[${defaultLabel} - Page ${index + 1} of ${doc.pages!.length}]` });
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: cleanBase64(pageData),
+          },
+        });
+      });
+    } else if (doc.data) {
+      const mime = normalizeMime(doc.mimeType, doc.name);
+      parts.push({ text: `[${defaultLabel}]` });
+      parts.push({
+        inlineData: {
+          mimeType: mime,
+          data: cleanBase64(doc.data),
+        },
+      });
+    }
+    return parts;
+  }
 
-  const qpPart = {
-    inlineData: {
-      mimeType: qpMime,
-      data: cleanBase64(questionPaper.data),
-    },
-  };
-
-  const asPart = {
-    inlineData: {
-      mimeType: asMime,
-      data: cleanBase64(answerSheet.data),
-    },
-  };
-
-  const akPart = {
-    inlineData: {
-      mimeType: akMime,
-      data: cleanBase64(answerKey.data),
-    },
-  };
+  const qpParts = buildDocParts(questionPaper, "Document 1: Question Paper");
+  const akParts = buildDocParts(answerKey, "Document 2: Answer Key & Model Marking Scheme");
+  const asParts = buildDocParts(answerSheet, "Document 3: Student Answer Sheet");
 
   const systemPrompt = `You are an expert, meticulous Coaching Institute Examination Evaluator and Academic Assessor.
 You have been provided with 3 documents:
@@ -153,9 +168,9 @@ Extract every question systematically and generate the complete assessment.`;
   const response = await ai.models.generateContent({
     model: "gemini-3.7-flash",
     contents: [
-      qpPart,
-      akPart,
-      asPart,
+      ...qpParts,
+      ...akParts,
+      ...asParts,
       { text: userTextPrompt },
     ],
     config: {
